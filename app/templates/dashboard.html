@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>LureCraft | Yönetim Paneli</title>
+    <style>
+        :root {
+            --navy:#082e52;
+            --teal:#008b8f;
+            --teal-soft:#e8f6f6;
+            --bg:#f4f8fa;
+            --line:#dce7eb;
+            --text:#183847;
+            --muted:#617885;
+            --white:#fff;
+            --danger:#9a3844;
+            --ok:#19734f;
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Arial,sans-serif; }
+        header,main,footer { width:min(1280px,100% - 36px); margin:auto; }
+        header { display:flex; justify-content:space-between; align-items:center; padding:22px 0; border-bottom:1px solid var(--line); gap:20px; }
+        a { color:var(--teal); }
+        .brand { font-size:25px; font-weight:800; text-decoration:none; color:var(--navy); letter-spacing:-1px; }
+        .brand span { color:var(--teal); }
+        main { padding:28px 0 36px; }
+        h1 { margin:0; font-size:34px; color:var(--navy); }
+        .sub { margin:6px 0 0; color:var(--muted); }
+        .login-box { margin:22px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        input,select,button,textarea { font:inherit; }
+        input,select,textarea { border:1px solid #cddde3; border-radius:9px; background:#fff; padding:10px 12px; color:var(--text); outline:none; }
+        input:focus,select:focus,textarea:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,139,143,.1); }
+        button { border:0; border-radius:9px; padding:10px 15px; color:#fff; background:var(--navy); cursor:pointer; }
+        button.secondary { background:var(--teal); }
+        button.ghost { background:#e8f1f4; color:var(--navy); }
+        button:disabled { opacity:.55; cursor:wait; }
+        .cards { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:20px 0 24px; }
+        .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:0 8px 24px rgba(8,46,82,.04); }
+        .card span { display:block; color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+        .card strong { display:block; margin-top:6px; font-size:28px; color:var(--navy); }
+        .toolbar { display:flex; justify-content:space-between; gap:14px; align-items:end; margin:0 0 14px; flex-wrap:wrap; }
+        .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+        .field { display:flex; flex-direction:column; gap:5px; }
+        .field label { color:var(--muted); font-size:12px; font-weight:700; }
+        .field input { min-width:240px; }
+        .status { min-height:22px; color:var(--muted); font-size:13px; }
+        .table-box { overflow-x:auto; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px rgba(8,46,82,.04); }
+        table { border-collapse:collapse; width:100%; min-width:1120px; text-align:left; }
+        th,td { padding:14px; border-bottom:1px solid #edf2f4; vertical-align:top; }
+        th { background:#eef6f7; color:#315666; font-size:12px; text-transform:uppercase; letter-spacing:.35px; }
+        td { font-size:13px; }
+        td strong { color:var(--navy); }
+        td .muted { color:var(--muted); font-size:12px; margin-top:3px; }
+        td textarea { width:230px; min-height:72px; resize:vertical; }
+        td select { min-width:125px; }
+        .save-result { min-height:18px; margin-top:6px; font-size:11px; color:var(--muted); }
+        .empty { padding:34px; text-align:center; color:var(--muted); }
+        footer { padding:0 0 30px; color:var(--muted); font-size:12px; }
+        @media(max-width:950px) { .cards { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:600px) { h1 { font-size:28px; } header { align-items:flex-start; } .cards { grid-template-columns:1fr; } .field input { min-width:100%; } .filters { width:100%; } .field { width:100%; } }
+    </style>
+</head>
+<body>
+    <header>
+        <a class="brand" href="{{ url_for('pages.index') }}">Lure<span>Craft</span></a>
+        <a href="{{ url_for('pages.index') }}">Karşılama sayfası</a>
+    </header>
+    <main>
+        <h1>Satış ve iletişim dashboard'u</h1>
+        <p class="sub">Yeni talepleri takip et, durumlarını güncelle ve müşteri notlarını tek ekranda tut.</p>
+
+        <div class="login-box">
+            <input id="adminKeyInput" type="password" autocomplete="current-password" placeholder="Yönetim API anahtarı">
+            <button id="baglanButton" type="button">Bağlan</button>
+            <button id="anahtarSilButton" class="ghost" type="button">Anahtarı unut</button>
+            <span id="baglantiDurumu" class="status"></span>
+        </div>
+
+        <section class="cards" aria-label="Dashboard özeti">
+            <article class="card"><span>Toplam talep</span><strong id="toplamText">—</strong></article>
+            <article class="card"><span>Yeni</span><strong id="yeniText">—</strong></article>
+            <article class="card"><span>Bugün</span><strong id="bugunText">—</strong></article>
+            <article class="card"><span>Son 7 gün</span><strong id="son7Text">—</strong></article>
+            <article class="card"><span>Tamamlanan</span><strong id="tamamlananText">—</strong></article>
+        </section>
+
+        <div class="toolbar">
+            <div class="filters">
+                <div class="field">
+                    <label for="aramaInput">Ara</label>
+                    <input id="aramaInput" type="search" maxlength="100" placeholder="İsim, telefon, mesaj veya not">
+                </div>
+                <div class="field">
+                    <label for="durumFilter">Durum</label>
+                    <select id="durumFilter">
+                        <option value="">Tüm durumlar</option>
+                        <option value="yeni">Yeni</option>
+                        <option value="iletisim">İletişime geçildi</option>
+                        <option value="teklif">Teklif</option>
+                        <option value="tamamlandi">Tamamlandı</option>
+                        <option value="iptal">İptal</option>
+                    </select>
+                </div>
+                <button id="filtreButton" class="secondary" type="button">Filtrele</button>
+                <button id="yenileButton" type="button">Yenile</button>
+            </div>
+            <span id="kayitSayisi" class="status">Bağlantı bekleniyor.</span>
+        </div>
+
+        <div class="table-box">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Talep</th>
+                        <th>Telefon</th>
+                        <th>Mesaj</th>
+                        <th>Tarih</th>
+                        <th>Durum</th>
+                        <th>Yönetim notu</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="leadSatirlari"></tbody>
+            </table>
+            <div id="bosDurum" class="empty" hidden>Bu filtreye uygun talep bulunmuyor.</div>
+        </div>
+        <p id="panelDurumu" class="status" role="status" aria-live="polite"></p>
+    </main>
+    <footer>LureCraft Teknoloji A.Ş. · Yönetim ekranı · Tarihler tarayıcının yerel saat diliminde gösterilir.</footer>
+
+    <script>
+        const durumEtiketleri = {
+            yeni: "Yeni",
+            iletisim: "İletişime geçildi",
+            teklif: "Teklif",
+            tamamlandi: "Tamamlandı",
+            iptal: "İptal"
+        };
+
+        function tarihiYaz(value) {
+            const date = new Date(value.replace(" ", "T") + "Z");
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleString("tr-TR");
+        }
+
+        function adminKey() {
+            return sessionStorage.getItem("lurecraft_admin_key") || "";
+        }
+
+        async function api(path, options = {}) {
+            const key = adminKey();
+            if (!key) throw new Error("Önce yönetim API anahtarını girin.");
+            const response = await fetch(path, {
+                ...options,
+                cache: "no-store",
+                headers: {
+                    ...(options.headers || {}),
+                    "X-Admin-Key": key
+                }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.basari) {
+                throw new Error(data.hata || "İşlem tamamlanamadı.");
+            }
+            return data;
+        }
+
+        async function ozetiYukle() {
+            const data = await api("{{ url_for('api.admin_ozet') }}");
+            document.getElementById("toplamText").textContent = data.ozet.toplam;
+            document.getElementById("yeniText").textContent = data.ozet.yeni;
+            document.getElementById("bugunText").textContent = data.ozet.bugun;
+            document.getElementById("son7Text").textContent = data.ozet.son7gun;
+            document.getElementById("tamamlananText").textContent = data.ozet.tamamlandi;
+        }
+
+        function durumSelect(value) {
+            const select = document.createElement("select");
+            for (const [key, label] of Object.entries(durumEtiketleri)) {
+                const option = document.createElement("option");
+                option.value = key;
+                option.textContent = label;
+                option.selected = key === value;
+                select.appendChild(option);
+            }
+            return select;
+        }
+
+        function satirOlustur(lead) {
+            const tr = document.createElement("tr");
+            const talepTd = document.createElement("td");
+            const isim = document.createElement("strong");
+            isim.textContent = lead.isim;
+            const kaynak = document.createElement("div");
+            kaynak.className = "muted";
+            kaynak.textContent = `#${lead.id} · ${lead.kaynak || "web"}`;
+            talepTd.append(isim, kaynak);
+
+            const telefonTd = document.createElement("td");
+            telefonTd.textContent = lead.telefon;
+            const mesajTd = document.createElement("td");
+            mesajTd.textContent = lead.mesaj || "—";
+            const tarihTd = document.createElement("td");
+            tarihTd.textContent = tarihiYaz(lead.tarih);
+
+            const durumTd = document.createElement("td");
+            const select = durumSelect(lead.durum || "yeni");
+            durumTd.appendChild(select);
+
+            const notTd = document.createElement("td");
+            const textarea = document.createElement("textarea");
+            textarea.maxLength = 2000;
+            textarea.placeholder = "Arama sonucu, müşteri tercihi, teklif notu…";
+            textarea.value = lead.notlar || "";
+            notTd.appendChild(textarea);
+
+            const islemTd = document.createElement("td");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "Kaydet";
+            const result = document.createElement("div");
+            result.className = "save-result";
+            button.addEventListener("click", async () => {
+                button.disabled = true;
+                result.textContent = "Kaydediliyor…";
+                try {
+                    await api(`/api/admin/leads/${lead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ durum: select.value, notlar: textarea.value.trim() })
+                    });
+                    result.textContent = "Kaydedildi.";
+                    await ozetiYukle();
+                } catch (error) {
+                    result.textContent = error.message;
+                } finally {
+                    button.disabled = false;
+                }
+            });
+            islemTd.append(button, result);
+            tr.append(talepTd, telefonTd, mesajTd, tarihTd, durumTd, notTd, islemTd);
+            return tr;
+        }
+
+        async function leadleriYukle() {
+            const durum = document.getElementById("durumFilter").value;
+            const arama = document.getElementById("aramaInput").value.trim();
+            const query = new URLSearchParams();
+            if (durum) query.set("durum", durum);
+            if (arama) query.set("arama", arama);
+            const data = await api("{{ url_for('api.admin_leadleri_listele') }}" + (query.toString() ? `?${query}` : ""));
+            const tbody = document.getElementById("leadSatirlari");
+            tbody.replaceChildren(...data.leads.map(satirOlustur));
+            document.getElementById("kayitSayisi").textContent = `${data.leads.length} kayıt gösteriliyor`;
+            document.getElementById("bosDurum").hidden = data.leads.length !== 0;
+        }
+
+        async function dashboardYukle() {
+            const status = document.getElementById("panelDurumu");
+            status.textContent = "Dashboard yükleniyor…";
+            try {
+                await Promise.all([ozetiYukle(), leadleriYukle()]);
+                document.getElementById("baglantiDurumu").textContent = "Bağlandı";
+                status.textContent = "Veriler güncel.";
+            } catch (error) {
+                document.getElementById("baglantiDurumu").textContent = "Bağlantı kurulamadı";
+                status.textContent = error.message;
+            }
+        }
+
+        document.getElementById("baglanButton").addEventListener("click", () => {
+            const value = document.getElementById("adminKeyInput").value.trim();
+            if (!value) {
+                document.getElementById("baglantiDurumu").textContent = "Anahtar gerekli.";
+                return;
+            }
+            sessionStorage.setItem("lurecraft_admin_key", value);
+            dashboardYukle();
+        });
+
+        document.getElementById("anahtarSilButton").addEventListener("click", () => {
+            sessionStorage.removeItem("lurecraft_admin_key");
+            document.getElementById("adminKeyInput").value = "";
+            document.getElementById("baglantiDurumu").textContent = "Anahtar silindi.";
+        });
+
+        document.getElementById("filtreButton").addEventListener("click", leadleriYukle);
+        document.getElementById("yenileButton").addEventListener("click", dashboardYukle);
+        document.getElementById("aramaInput").addEventListener("keydown", event => {
+            if (event.key === "Enter") leadleriYukle();
+        });
+
+        const saved = adminKey();
+        if (saved) {
+            document.getElementById("adminKeyInput").value = saved;
+            dashboardYukle();
+        }
+    </script>
+</body>
+</html>

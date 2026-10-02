@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LureCraft | Akıllı Satış Asistanı</title>
+    <style>
+        :root { color-scheme: light; --navy:#082e52; --teal:#007d82; --muted:#536b7a; --line:#d8e5e8; }
+        * { box-sizing:border-box; }
+        
+        /* Ekranı ortalamak için body düzenlendi */
+        body { 
+            margin:0; 
+            color:var(--navy); 
+            background:linear-gradient(135deg,#f4f8fa,#dff3ef); 
+            font:16px/1.6 Arial,sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            padding: 20px;
+        }
+
+        .label { color:var(--muted); font-size:13px; }
+        
+        /* Chat kutusuna genişlik sınırı eklendi */
+        .chat { 
+            width: 100%; 
+            max-width: 500px; 
+            padding:25px; 
+            border-radius:21px; 
+            background:rgba(255,255,255,.75); 
+            border:1px solid #fff; 
+            backdrop-filter:blur(18px); 
+            box-shadow:0 12px 40px #082e5210; 
+        }
+        
+        .chat-title { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+        .avatar { display:grid; place-items:center; width:42px; height:42px; border-radius:12px; background:#dff2ed; color:var(--teal); font-weight:700; }
+        .chat-title h2 { margin:0; font-size:19px; }
+        #cevapAlani { min-height:150px; padding:18px; border-radius:12px; background:#eef6f6; color:#254755; white-space:pre-wrap; overflow-wrap:anywhere; }
+        label { display:block; font-size:14px; font-weight:700; margin-bottom:7px; }
+        input, button { font:inherit; }
+        input { width:100%; min-width:0; padding:12px; border:1px solid #b9cfd5; border-radius:9px; color:var(--navy); background:#fff; }
+        button { border:0; border-radius:9px; background:var(--navy); color:#fff; padding:12px 20px; cursor:pointer; font-weight:700; }
+        button:disabled { opacity:.6; cursor:wait; }
+        .send { display:flex; gap:9px; align-items:end; margin-top: 15px;}
+        .send div { flex:1; min-width:0; }
+        
+        @media(max-width:750px) { .chat { padding:20px; } }
+    </style>
+</head>
+<body>
+
+    <section class="chat" aria-labelledby="asistanBaslik">
+        <div class="chat-title">
+            <div class="avatar" aria-hidden="true">LC</div>
+            <div>
+                <h2 id="asistanBaslik">LureCraft Asistanı</h2>
+                <span class="label">Sorularını birlikte netleştirelim</span>
+            </div>
+        </div>
+        <p id="cevapAlani" role="status" aria-live="polite">Merhaba! LureCraft ve kişiselleştirilebilir mikro yemler hakkında ne öğrenmek istersin?</p>
+        <form id="sohbetFormu" class="send">
+            <div>
+                <label for="mesajInput">Mesajın</label>
+                <input id="mesajInput" name="mesaj" placeholder="Örneğin: Ürünler nasıl kişiselleştirilir?" maxlength="2000" autocomplete="off" required>
+            </div>
+            <button id="sorButton" type="submit">Sor</button>
+        </form>
+    </section>
+
+    <script>
+        let gecmis = [];
+
+        async function apiGonder(adres, veri) {
+            const controller = new AbortController();
+            const zamanlayici = setTimeout(() => controller.abort(), 40000);
+            try {
+                const response = await fetch(adres, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(veri),
+                    signal: controller.signal
+                });
+                const data = await response.json();
+                if (!response.ok || !data.basari) {
+                    throw new Error(data.hata || "İşlem tamamlanamadı.");
+                }
+                return data;
+            } catch (error) {
+                if (error.name === "AbortError") {
+                    throw new Error("İstek zaman aşımına uğradı. Tekrar deneyin.");
+                }
+                if (error instanceof TypeError || error instanceof SyntaxError) {
+                    throw new Error("Sunucuya ulaşılamadı. Lütfen tekrar deneyin.");
+                }
+                throw error;
+            } finally {
+                clearTimeout(zamanlayici);
+            }
+        }
+
+        document.getElementById("sohbetFormu").addEventListener("submit", async event => {
+            event.preventDefault();
+            const input = document.getElementById("mesajInput");
+            const button = document.getElementById("sorButton");
+            const cevap = document.getElementById("cevapAlani");
+            const mesaj = input.value.trim();
+            if (!mesaj || button.disabled) return;
+            button.disabled = true;
+            cevap.setAttribute("aria-busy", "true");
+            cevap.textContent = "Yanıt hazırlanıyor…";
+            try {
+                // Not: Buradaki jinja template etiketi Flask projesi içinde çalışacaktır.
+                const data = await apiGonder("{{ url_for('api.sohbet') }}", { mesaj, gecmis });
+                cevap.textContent = data.cevap;
+                gecmis.push({ role: "user", content: mesaj });
+                gecmis.push({ role: "assistant", content: data.cevap.slice(0, 4000) });
+                gecmis = gecmis.slice(-20);
+                input.value = "";
+            } catch (error) {
+                cevap.textContent = error.message;
+            } finally {
+                button.disabled = false;
+                cevap.setAttribute("aria-busy", "false");
+                input.focus();
+            }
+        });
+    </script>
+</body>
+</html>
